@@ -5,7 +5,7 @@
 namespace Jellyfin.Server.Implementations.Migrations
 {
     /// <summary>
-    /// Adds SortOrder column and creates temporary 2-column index.
+    /// Adds SortOrder column while keeping the existing single-column index on ItemId.
     /// The app migration PopulateImageSortOrder will create the final 3-column index
     /// (ItemId, ImageType, SortOrder) after populating SortOrder values to avoid
     /// index update overhead during backfill.
@@ -15,9 +15,8 @@ namespace Jellyfin.Server.Implementations.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropIndex(
-                name: "IX_BaseItemImageInfos_ItemId",
-                table: "BaseItemImageInfos");
+            // Keep existing single-column index on ItemId for backfill performance
+            // The final 3-column index will be created after PopulateImageSortOrder
 
             migrationBuilder.AddColumn<int>(
                 name: "SortOrder",
@@ -25,28 +24,14 @@ namespace Jellyfin.Server.Implementations.Migrations
                 type: "INTEGER",
                 nullable: false,
                 defaultValue: 0);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_BaseItemImageInfos_ItemId_ImageType",
-                table: "BaseItemImageInfos",
-                columns: new[] { "ItemId", "ImageType" });
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropIndex(
-                name: "IX_BaseItemImageInfos_ItemId_ImageType",
-                table: "BaseItemImageInfos");
-
             migrationBuilder.DropColumn(
                 name: "SortOrder",
                 table: "BaseItemImageInfos");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_BaseItemImageInfos_ItemId",
-                table: "BaseItemImageInfos",
-                column: "ItemId");
         }
     }
 }

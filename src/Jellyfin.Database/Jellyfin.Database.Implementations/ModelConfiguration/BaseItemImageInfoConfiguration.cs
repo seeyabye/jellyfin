@@ -15,8 +15,11 @@ public class BaseItemImageInfoConfiguration : IEntityTypeConfiguration<BaseItemI
         builder.HasKey(e => e.Id);
         builder.HasOne(e => e.Item).WithMany(e => e.Images).HasForeignKey(e => e.ItemId);
 
-        // Temporary 2-column index for optimal backfill performance
-        // App migration will add (ItemId, ImageType, SortOrder) after SortOrder population
-        builder.HasIndex(e => new { e.ItemId, e.ImageType });
+        // Unique index to prevent duplicate image entries
+        builder.HasIndex(e => new { e.ItemId, e.ImageType, e.Path }).IsUnique();
+
+        // Performance index for ordered image retrieval
+        // Created by PopulateImageSortOrder migration after SortOrder values are populated
+        builder.HasIndex(e => new { e.ItemId, e.ImageType, e.SortOrder });
     }
 }

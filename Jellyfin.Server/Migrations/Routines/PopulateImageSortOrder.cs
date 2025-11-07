@@ -154,20 +154,21 @@ internal class PopulateImageSortOrder : IAsyncMigrationRoutine
             _logger.LogError(ex, "Error saving final batch");
         }
 
-        // After population succeeds, swap to final 3-column index for optimal query performance
-        _logger.LogInformation("Creating final composite index (ItemId, ImageType, SortOrder)");
-
+        // Now that SortOrder is populated, create the final 3-column index
+        // This must happen AFTER backfill to avoid massive index churn
         try
         {
+            _logger.LogInformation("Creating final 3-column index on (ItemId, ImageType, SortOrder)");
+
             // Create the final 3-column index
             await context.Database.ExecuteSqlRawAsync(
                 @"CREATE INDEX IF NOT EXISTS IX_BaseItemImageInfos_ItemId_ImageType_SortOrder
                 ON BaseItemImageInfos(ItemId, ImageType, SortOrder)",
                 cancellationToken).ConfigureAwait(false);
 
-            // Drop the temporary 2-column index
+            // Drop the old single-column index (the 3-column index covers it via leftmost prefix)
             await context.Database.ExecuteSqlRawAsync(
-                @"DROP INDEX IF EXISTS IX_BaseItemImageInfos_ItemId_ImageType",
+                @"DROP INDEX IF EXISTS IX_BaseItemImageInfos_ItemId",
                 cancellationToken).ConfigureAwait(false);
 
             // Update query planner statistics

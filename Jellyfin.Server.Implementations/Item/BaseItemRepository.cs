@@ -583,6 +583,13 @@ public sealed class BaseItemRepository
 
         foreach (var imageInfo in item.ImageInfos)
         {
+            // Skip images with null or empty paths to prevent NullReferenceException
+            if (string.IsNullOrWhiteSpace(imageInfo.Path))
+            {
+                _logger.LogWarning("Skipping image with empty path for item {ItemId}", item.Id);
+                continue;
+            }
+
             var imageType = (ImageInfoImageType)imageInfo.Type;
 
             // Check if this image path already existed with a SortOrder
@@ -603,7 +610,14 @@ public sealed class BaseItemRepository
             }
         }
 
-        context.BaseItemImageInfos.AddRange(imagesToSave);
+        // Deduplicate by (ImageType, Path) to prevent duplicate entries
+        // This handles edge cases where item.ImageInfos contains duplicate paths
+        var uniqueImages = imagesToSave
+            .GroupBy(i => (i.ImageType, Path: i.Path.ToUpperInvariant()))
+            .Select(g => g.First())
+            .ToList();
+
+        context.BaseItemImageInfos.AddRange(uniqueImages);
         context.SaveChanges();
         transaction.Commit();
     }
